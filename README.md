@@ -78,36 +78,40 @@ docker exec -it mongo bash -c 'mongo --eval "db.rests.findOne({})"'
 ```
 
 The result should contain and looks like:
-```json
-...
+```jsonc
+// ...
 {
-	"_id" : "5efdf54261f00ed3fdf69281",
-	"name" : "Meal",
-	"address" : "Литейный пр., 17-19, Санкт-Петербург 191028 Россия",
-	"district" : "Литейный",
+	"_id" : "5f05ce4b7550949dd7e1cd2e", //ObjectId("5f05ce4b7550949dd7e1cd2e"),
+	"name" : "Ресторан Тбилисити",
+	"address" : "Литейный проспект 10 Рядом с Radisson Sonya Hotel, Санкт-Петербург 191028 Россия",
+	"district" : null,
+	"coords" : {
+		"coords__lat": 30.487237,
+		"coords__lon":  59.98391
+	},
 	"rating" : {
-		"rating__mean" : 5.0,
-		"rating__food" : 5,
+		"rating__mean" : 4.5,
+		"rating__food" : 4.5,
 		"rating__service" : 5,
-		"rating__price_quality" : 5,
-		"rating__atmosphere" : 5
+		"rating__price_quality" : 4.5,
+		"rating__atmosphere" : 4.5
 	},
 	"check_group" : "По умеренной цене",
 	"kitchen_types" : [
 		"Европейская",
-		"Современная"
+		"Русская",
+		"Кавказская",
+		"Грузинская"
 	],
-	"comments": [
-		{
-			"comment__rating": 5.0,
-			"comment__body": "..."
-		},
-		{
-			"comment__rating": 4.5,
-			"comment__body": "..."
-		}
-		...
-	]
+	"comments" : {
+		"comments__count" : 142,
+		"comments" : [
+			{
+				"comment__rating" : 5,
+				"comment__body" : "..."
+			},
+			// ...
+		]
 }
 ```
 Schema structure:
@@ -117,10 +121,15 @@ root
  |    |-- oid: string
  |-- address: string
  |-- check_group: string
- |-- comments: array
- |    |-- element: struct
- |    |    |-- comment__rating: double
- |    |    |-- comment__body: string
+ |-- comments: struct
+ |    |-- comments__count: integer
+ |    |-- comments: array
+ |    |    |-- element: struct
+ |    |    |    |-- comment__rating: double
+ |    |    |    |-- comment__body: string
+ |-- coords: struct
+ |    |-- coords__lat: double
+ |    |-- coords__lon: double
  |-- district: string
  |-- kitchen_types: array
  |    |-- element: string

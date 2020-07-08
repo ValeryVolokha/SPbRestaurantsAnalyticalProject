@@ -76,7 +76,11 @@ class TripAdvisorRestaurantsSpider(scrapy.Spider):
 
         if not (restaurant['address'] is None):
             addr = restaurant['address'].split(',')[0].lower()
-            bld = get_building(restaurant['address'].split(',')[1])
+            addr_splited = restaurant['address'].split(',')
+            if len(addr_splited) > 1:
+                bld = get_building(addr_splited[1])
+            else:
+                bld = get_building(addr_splited[0])
             
             addr = addr.replace('пр.', ' ') \
                         .replace('ул.', ' ') \
@@ -177,7 +181,7 @@ class TripAdvisorRestaurantsSpider(scrapy.Spider):
         else:
             restaurant['kitchen_types'] = None
 
-        self._comments = []
+        _comments = []
         comment = {}
         for r, c in zip(
                 response.xpath('//div[@id="REVIEWS"]//span[contains(@class, "ui_bubble_rating")]/@class'),
@@ -185,38 +189,39 @@ class TripAdvisorRestaurantsSpider(scrapy.Spider):
             comment['comment__rating'] = int(r.get().split('_')[-1]) / 10
             comment['comment__body'] = c.get()
 
-            self._comments.append(comment)
+            _comments.append(comment)
+
+        comments__count = response.xpath('//span[@class="reviews_header_count"]/text()').get()
 
         n_reviews_pages = response.xpath('//div[@id="REVIEWS"]//div[@class="pageNumbers"]/a/text()')
         if n_reviews_pages:
             n_reviews_pages = int(n_reviews_pages[-1].get())
             for i in range(1, n_reviews_pages):
-                review_page_url = response.url.replace('Reviews-', 'Reviews-or'+str(i*10))
-                yield scrapy.Request(review_page_url, callback=self.parse_comments)
+                review_page_url = response.url.replace('Reviews-', 'Reviews-or'+str(i*10)+'-')
+                yield scrapy.Request(review_page_url, callback=self.parse_comments, cb_kwargs={'_comments': _comments})
 
-        comments__count = response.xpath('//span[@class="reviews_header_count"]/text()').get()
         if comments__count:
             restaurant['comments'] = {
                 'comments__count': int(comments__count.replace('(', '') 
                                                         .replace(')', '')
                                                         .replace(' ', '')
                                                         .replace('\xa0', '')),
-                'comments': self._comments
+                'comments': _comments
             }
         if not comments__count or restaurant['comments']['comments'] == []:
             restaurant['comments'] = None
 
         yield restaurant
 
-    def parse_comments(self, response):
+    def parse_comments(self, response2, _comments):
         comment = {}
         for r, c in zip(
-                response.xpath('//div[@id="REVIEWS"]//span[contains(@class, "ui_bubble_rating")]/@class'),
-                response.xpath('//div[@id="REVIEWS"]//p[@class="partial_entry"]/text()[not(ancestor::div[@class="mgrRspnInline"])]')):
+                response2.xpath('//div[@id="REVIEWS"]//span[contains(@class, "ui_bubble_rating")]/@class'),
+                response2.xpath('//div[@id="REVIEWS"]//p[@class="partial_entry"]/text()[not(ancestor::div[@class="mgrRspnInline"])]')):
             comment['comment__rating'] = int(r.get().split('_')[-1]) / 10
             comment['comment__body'] = c.get()
 
-            self._comments.append(comment)
+            _comments.append(comment)
 
 
 def get_building(s):
