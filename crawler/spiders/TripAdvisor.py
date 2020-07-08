@@ -1,5 +1,6 @@
 import scrapy
-
+from geopy.geocoders import Nominatim
+import re
 
 rating_parts_types = {
     'Питание': 'rating__food',
@@ -7,6 +8,29 @@ rating_parts_types = {
     'Цена/качество': 'rating__price_quality',
     'Атмосфера': 'rating__atmosphere'
 }
+
+SPbDistricts = [
+    'адмиратлейский',
+    'василеостровский',
+    'выборгский',
+    'калининский',
+    'кировский',
+    'колпинский',
+    'красногвардейский',
+    'красносельский',
+    'кронштадский',
+    'курортный',
+    'московский',
+    'невский',
+    'петроградский',
+    'петродворцовый',
+    'приморский',
+    'пушкинский',
+    'фрунзенский',
+    'центральный'
+]
+
+geoloc = Nominatim(user_agent='TripAdv')
 
 
 class TripAdvisorRestaurantsSpider(scrapy.Spider):
@@ -50,11 +74,63 @@ class TripAdvisorRestaurantsSpider(scrapy.Spider):
             else:
                 restaurant['address'] = None
 
-        district = response.xpath('//span[@class="_2saB_OSe _1OBMr94N"]/div')
-        if district != []:
-            restaurant['district'] = district[0].xpath('text()').get()
+        if not (restaurant['address'] is None):
+            addr = restaurant['address'].split(',')[0].lower()
+            bld = get_building(restaurant['address'].split(',')[1])
+            
+            addr = addr.replace('пр.', ' ') \
+                        .replace('ул.', ' ') \
+                        .replace('наб.', ' ') \
+                        .replace('пр-кт', ' ') \
+                        .replace('пр-т', ' ') \
+                        .replace('проспект', ' ') \
+                        .replace('просп.', ' ') \
+                        .replace('просп ', ' ') \
+                        .replace(' просп', ' ') \
+                        .replace('ш.', ' ') \
+                        .replace('.', ' ') \
+                        .replace('бул.', ' ') \
+                        .replace('бульвар', ' ') \
+                        .replace('переулок', ' ') \
+                        .replace('пер.', ' ') \
+                        .replace(' пер ', ' ') \
+                        .replace('васильевского острова', ' ') \
+                        .replace('в.о.', ' ') \
+                        .replace('пл.', ' ') \
+                        .replace('площадь', ' ') \
+                        .replace('канал', ' ') \
+                        .replace(' кан ', ' ') \
+                        .replace('кан.', ' ') \
+                        .replace('.', ' ') \
+                        .replace('-', ' ') + ' спб '
+
+            loc = geoloc.geocode(addr, timeout=15)
+            if loc:
+                loc1 = str(loc).lower()
+                district = re.search(', (.*?) район', loc1)
+                if district is None:
+                    district = re.search(', (.*?) district', loc1)
+                if not (district is None):
+                    district = district.group(1).split(' ')[-1]
+                    restaurant['district'] = district
+                else:
+                    restaurant['district'] = None
+
+                loc2 = geoloc.geocode(addr + ' ' + str(bld), timeout=15)
+                if loc2:
+                    lat, lon = loc2.latitude, loc2.longitude
+                else:
+                    lat, lon = loc.latitude, loc.longitude
+                restaurant['coords'] = {
+                    'coords__lat': lat,
+                    'coords__lon': lon
+                }
+            else:
+                restaurant['district'] = None
+                restaurant['coords'] = None
         else:
             restaurant['district'] = None
+            restaurant['coords'] = None
 
         rating__parts = {
             rating_parts_types[t.get()]: int(rate.get().split('_')[-1]) / 10
@@ -92,7 +168,7 @@ class TripAdvisorRestaurantsSpider(scrapy.Spider):
         elif check_group == '$$$$':
             restaurant['check_group'] = 'Рестораны высокой кухни'
         else:
-            restaurant['check_group'] = None
+            restaurant['check_group'] = 'Вкусно и недорого'
 
         kitchen_types = response.xpath(
             '//div[@class="_3UjHBXYa"]/div[div[@class="_14zKtJkz"]/text()="ТИП КУХНИ"]/div[@class="_1XLfiSsv"]/text()')
@@ -101,4 +177,51 @@ class TripAdvisorRestaurantsSpider(scrapy.Spider):
         else:
             restaurant['kitchen_types'] = None
 
+        self._comments = []
+        comment = {}
+        for r, c in zip(
+                response.xpath('//div[@id="REVIEWS"]//span[contains(@class, "ui_bubble_rating")]/@class'),
+                response.xpath('//div[@id="REVIEWS"]//p[@class="partial_entry"]/text()[not(ancestor::div[@class="mgrRspnInline"])]')):
+            comment['comment__rating'] = int(r.get().split('_')[-1]) / 10
+            comment['comment__body'] = c.get()
+
+            self._comments.append(comment)
+
+        n_reviews_pages = response.xpath('//div[@id="REVIEWS"]//div[@class="pageNumbers"]/a/text()')
+        if n_reviews_pages:
+            n_reviews_pages = int(n_reviews_pages[-1].get())
+            for i in range(1, n_reviews_pages):
+                review_page_url = response.url.replace('Reviews-', 'Reviews-or'+str(i*10))
+                yield scrapy.Request(review_page_url, callback=self.parse_comments)
+
+
+        restaurant['comments'] = {
+            'comments__count': int(response.xpath('//span[@class="reviews_header_count"]/text()').get() \
+                                            .replace('(', '').replace(')', '').replace(' ', '').replace('\xa0', '')),
+            'comments': self._comments
+        }
+        if restaurant['comments']['comments'] == []:
+            restaurant['comments'] = None
+
         yield restaurant
+
+    def parse_comments(self, response):
+        comment = {}
+        for r, c in zip(
+                response.xpath('//div[@id="REVIEWS"]//span[contains(@class, "ui_bubble_rating")]/@class'),
+                response.xpath('//div[@id="REVIEWS"]//p[@class="partial_entry"]/text()[not(ancestor::div[@class="mgrRspnInline"])]')):
+            comment['comment__rating'] = int(r.get().split('_')[-1]) / 10
+            comment['comment__body'] = c.get()
+
+            self._comments.append(comment)
+
+
+def get_building(s):
+    bld = 0
+    for si in s:
+        if si.isdigit():
+            bld = bld*10 + int(si)
+        elif bld != 0:
+            break
+
+    return bld if bld != 0 else ''

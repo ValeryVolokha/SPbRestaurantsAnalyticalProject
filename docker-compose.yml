@@ -1,0 +1,22 @@
+version: '3'
+services:
+  pyspark:
+    image: jupyter/pyspark-notebook:latest
+    container_name: pyspark
+    networks: 
+      - mongo_net
+    ports:
+      - "9999:8888"
+    volumes:
+      - "./:/home/jovyan/work"
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    networks:
+      - mongo_net
+    volumes:
+      - "./:/work"
+    command: 
+      'bash -c "mongod --bind_ip_all --fork --logpath=mongo.log && mongoimport --jsonArray --db test --collection rests --drop --file /work/tripadvisor_restaurants.json && tail -f /dev/null"'
+networks:
+  mongo_net:
