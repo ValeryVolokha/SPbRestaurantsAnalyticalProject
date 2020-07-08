@@ -194,13 +194,16 @@ class TripAdvisorRestaurantsSpider(scrapy.Spider):
                 review_page_url = response.url.replace('Reviews-', 'Reviews-or'+str(i*10))
                 yield scrapy.Request(review_page_url, callback=self.parse_comments)
 
-
-        restaurant['comments'] = {
-            'comments__count': int(response.xpath('//span[@class="reviews_header_count"]/text()').get() \
-                                            .replace('(', '').replace(')', '').replace(' ', '').replace('\xa0', '')),
-            'comments': self._comments
-        }
-        if restaurant['comments']['comments'] == []:
+        comments__count = response.xpath('//span[@class="reviews_header_count"]/text()').get()
+        if comments__count:
+            restaurant['comments'] = {
+                'comments__count': int(comments__count.replace('(', '') 
+                                                        .replace(')', '')
+                                                        .replace(' ', '')
+                                                        .replace('\xa0', '')),
+                'comments': self._comments
+            }
+        if not comments__count or restaurant['comments']['comments'] == []:
             restaurant['comments'] = None
 
         yield restaurant
