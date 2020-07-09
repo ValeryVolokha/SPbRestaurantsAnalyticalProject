@@ -163,7 +163,7 @@ Further, the coordinates of the restaurants were plotted on a map of St. Petersb
 
 A heat map of the correlation of the ratings that visitors give the restaurant and how much the ratings for individual criteria affect the overall rating that the visitor puts (overall rating! = average by criteria) was also compiled.
 
-<img src="common/corrMatrix.png" alt="common/corrMatrix.png" width="300" height="300" />
+<img src="common/corrMatrix.png" alt="common/corrMatrix.png" width="400" height="400" align="center" />
 
 You can see that although the difference is not significant, however, the quality of service affects the final grade more than the quality of the food and other criteria.
 
@@ -173,7 +173,7 @@ The distribution of various types of kitchen by city districts was also estimate
 
 At the end, a function was written to display a word cloud for each restaurant. As you can see below "Necanon" (НЕКАНОН) is suitable for groups of friends, lovers of superhero themes, as well as lovers of unusual cocktails. And Cafe Zinger (Кафэ Зингеръ) is a very cosy place with beautiful views of the Kazan Cathedral and a wide selection of delicious food.
 
-<img src="common/cloud1.png" alt="common/cloud1.png" width="250" height="250" align="left" />
-
-<img src="common/cloud2.png" alt="common/cloud2.png" width="250" height="250" align="right" />
+<img src="common/cloud1.png" alt="common/cloud1.png" width="350" height="350"/>
+<br />
+<img src="common/cloud2.png" alt="common/cloud2.png" width="350" height="350" />
 
