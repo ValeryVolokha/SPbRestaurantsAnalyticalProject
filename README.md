@@ -39,12 +39,20 @@ docker-compose up --force-recreate
 ```
 
 This creates 2 connected pyspark and mongo containers and forwards pyspark container's port 8888 to host's port 9999.
+Also it's creates collection ```test.rests``` in mongodb in mongo container and restore it from ```tripadvisor_restaurants.json``` file.
+
+```bash
+# install some requirement libs
+docker exec -it pyspark bash -c "pip install -r work/requirements.txt"
+```
 
 Go to ```http://localhost:9999/``` and open ```/work/analysis.ipynb``` file.
 
 ---
 
 ## Scraping and crawling data
+Crawler code is contained in the ```crawler``` folder, mainly in the ```TripAdvisor.py``` file. If desired, the code can be changed, for example by changing the ```start_page```, and used it to parse other information from the site, such as hotels for example. 
+
 > Warning: may take a long time. It's already done and saved in ```tripadvisor_restaurants.json``` file.
 
 ```bash
@@ -81,13 +89,13 @@ The result should contain and looks like:
 ```jsonc
 // ...
 {
-	"_id" : "5f05ce4b7550949dd7e1cd2e", //ObjectId("5f05ce4b7550949dd7e1cd2e"),
+	"_id" : ObjectId("5f05ce4b7550949dd7e1cd2e"),
 	"name" : "Ресторан Тбилисити",
 	"address" : "Литейный проспект 10 Рядом с Radisson Sonya Hotel, Санкт-Петербург 191028 Россия",
-	"district" : null,
+	"district" : "центральный",
 	"coords" : {
-		"coords__lat": 30.487237,
-		"coords__lon":  59.98391
+		"coords__lat": 30.349045,
+		"coords__lon":  59.945959
 	},
 	"rating" : {
 		"rating__mean" : 4.5,
@@ -145,3 +153,27 @@ root
 ---
 
 ## Results
+Analytics is presented in the file ```analysis.ipynb```
+
+During the work, a dataset describing the restaurants of St. Petersburg was parsed and formed. The scheme and model fields are above. Then, lost (not indicated on the site) data that was important was restored, for example, the district in which the restaurant is located, its coordinates, etc. Geopy and the Nominatim system were used for it.
+
+Further, the coordinates of the restaurants were plotted on a map of St. Petersburg to assess the density and distribution of restaurants in the districts of the city, as well as comparison with the average ratings of these restaurants. More details in the file, where detailed tables with statistics are also given.
+
+<img src="common/mapOut.png" alt="common/mapOut.png" />
+
+A heat map of the correlation of the ratings that visitors give the restaurant and how much the ratings for individual criteria affect the overall rating that the visitor puts (overall rating! = average by criteria) was also compiled.
+
+<img src="common/corrMatrix.png" alt="common/corrMatrix.png" width="300" height="300" />
+
+You can see that although the difference is not significant, however, the quality of service affects the final grade more than the quality of the food and other criteria.
+
+The distribution of various types of kitchen by city districts was also estimated, as well as the distribution of ratings for them. More information in ```analysis.ipynb``` where tables with values are given. Also, for each district, histograms were compiled of the percentage of the number of restaurants of this kitchen type to the rest. Example below.
+
+<img src="common/kitchensHist.png" alt="common/kitchensHist.png.png" />
+
+At the end, a function was written to display a word cloud for each restaurant. As you can see below "Necanon" (НЕКАНОН) is suitable for groups of friends, lovers of superhero themes, as well as lovers of unusual cocktails. And Cafe Zinger (Кафэ Зингеръ) is a very cosy place with beautiful views of the Kazan Cathedral and a wide selection of delicious food.
+
+<img src="common/cloud1.png" alt="common/cloud1.png" width="250" height="250" align="left" />
+
+<img src="common/cloud2.png" alt="common/cloud2.png" width="250" height="250" align="right" />
+
